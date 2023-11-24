@@ -17,5 +17,9 @@ use App\Http\Controllers\PaymentController;
 Route::get('/', function () {
     return view('welcome');
 });
+Route::prefix('payments')->group(function () {
+    Route::get('/stk-push', [PaymentController::class, 'initiateStkPush']);
+    Route::get('/token', [PaymentController::class, 'token']);
+    Route::post('/callback', [PaymentController::class, 'stkCallback'])->name('callback');
+});
 
-Route::get('/stk-push', [PaymentController::class, 'initiateStkPush']);
