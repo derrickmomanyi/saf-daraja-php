@@ -19,6 +19,10 @@ Route::get('/', function () {
 });
 Route::prefix('payments')->group(function () {
     Route::get('/stk-push', [PaymentController::class, 'initiateStkPush']);
+    Route::get('/stk-query', [PaymentController::class, 'stkQuery']);
+    Route::get('/registerUrl', [PaymentController::class, 'registerUrl']);
+    Route::get('/validation', [PaymentController::class, 'Validation']);
+    Route::get('/confirmation', [PaymentController::class, 'Confirmation']);
     Route::get('/token', [PaymentController::class, 'token']);
     Route::post('/callback', [PaymentController::class, 'stkCallback'])->name('callback');
 });

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\C2brequest;
 use App\Models\StkRequest;
 use Carbon\Carbon;
 // use Illuminate\Http\Request;
@@ -99,24 +100,20 @@ class PaymentController extends Controller
 
     }
 
-    public function stkCallback()
+    public function stkCallback(Request $request)
     {
-        $data=file_get_contents('php://input');
-        Storage::disk('local')->put('stk.txt',$data);
+        $response=json_decode($request->getContent());
 
-        $response=json_decode($data);
+         // Check if "ResultCode" is present in the response
+         if (isset($response->Body->stkCallback->ResultCode)) {
 
-        $ResultCode=$response->Body->stkCallback->ResultCode;
+          $ResultCode=$response->Body->stkCallback->ResultCode;
 
         if($ResultCode==0){
-            $MerchantRequestID=$response->Body->stkCallback->MerchantRequestID;
             $CheckoutRequestID=$response->Body->stkCallback->CheckoutRequestID;
             $ResultDesc=$response->Body->stkCallback->ResultDesc;
-            $Amount=$response->Body->stkCallback->CallbackMetadata->Item[0]->Value;
             $MpesaReceiptNumber=$response->Body->stkCallback->CallbackMetadata->Item[1]->Value;
-            //$Balance=$response->Body->stkCallback->CallbackMetadata->Item[2]->Value;
             $TransactionDate=$response->Body->stkCallback->CallbackMetadata->Item[3]->Value;
-            $PhoneNumber=$response->Body->stkCallback->CallbackMetadata->Item[3]->Value;
 
             $payment=Stkrequest::where('CheckoutRequestID',$CheckoutRequestID)->firstOrfail();
             $payment->status='Paid';
@@ -136,6 +133,106 @@ class PaymentController extends Controller
         $payment->save();
 
         }
+    }
+
+    }
+
+
+    public function stkQuery()
+    {
+        $accessToken=$this->token();
+        $BusinessShortCode =  env('PAYBILL_NUMBER');
+        $passKey = env('PASSKEY_STK');
+        $url = env('SAFARICOM_QUERY_URL');
+        $Timestamp=Carbon::now()->format('YmdHis');
+        $Password = base64_encode($BusinessShortCode . $passKey . $Timestamp);
+        $CheckoutRequestID = env('CHECKOUTREQUEST_ID');
+
+        $response=Http::withToken($accessToken)->post($url,[
+
+            'BusinessShortCode'=>$BusinessShortCode,
+            'Timestamp'=>$Timestamp,
+            'Password'=>$Password,
+            'CheckoutRequestID'=>$CheckoutRequestID
+        ]);
+
+        return $response;
+
+    }
+
+
+    public function registerUrl(){
+        $accessToken=$this->token();
+        $url = env('SAFARICOM_REGISTER_URL');
+        $ShortCode = env('BUSINESS_SHORTCODE');
+        $ResponseType='Completed';  //Cancelled
+        $ConfirmationURL = env('CONFIRMATION_URL');
+        $ValidationURL = env('VALIDATION_URL');
+
+        $response=Http::withToken($accessToken)->post($url,[
+            'ShortCode'=>$ShortCode,
+            'ResponseType'=>$ResponseType,
+            'ConfirmationURL'=>$ConfirmationURL,
+            'ValidationURL'=>$ValidationURL
+        ]);
+
+        return $response;
+    }
+
+    public function Validation()
+    {
+        $data=file_get_contents('php://input');
+        Storage::disk('local')->put('validation.txt',$data);
+
+        //validation logic
+
+        return response()->json([
+            'ResultCode'=>0,
+            'ResultDesc'=>'Accepted'
+        ]);
+    }
+
+    public function Confirmation()
+    {
+        $data=file_get_contents('php://input');
+        Storage::disk('local')->put('confirmation.txt',$data);
+        //save data to DB
+        $response=json_decode($data);
+        $TransactionType=$response->TransactionType;
+        $TransID=$response->TransID;
+        $TransTime=$response->TransTime;
+        $TransAmount=$response->TransAmount;
+        $BusinessShortCode=$response->BusinessShortCode;
+        $BillRefNumber=$response->BillRefNumber;
+        $InvoiceNumber=$response->InvoiceNumber;
+        $OrgAccountBalance=$response->OrgAccountBalance;
+        $ThirdPartyTransID=$response->ThirdPartyTransID;
+        $MSISDN=$response->MSISDN;
+        $FirstName=$response->FirstName;
+        $MiddleName=$response->MiddleName;
+        $LastName=$response->LastName;
+
+        $c2b=new C2brequest;
+        $c2b->TransactionType=$TransactionType;
+        $c2b->TransID=$TransID;
+        $c2b->TransTime=$TransTime;
+        $c2b->TransAmount=$TransAmount;
+        $c2b->BusinessShortCode=$BusinessShortCode;
+        $c2b->BillRefNumber=$BillRefNumber;
+        $c2b->InvoiceNumber=$InvoiceNumber;
+        $c2b->OrgAccountBalance=$OrgAccountBalance;
+        $c2b->ThirdPartyTransID=$ThirdPartyTransID;
+        $c2b->MSISDN=$MSISDN;
+        $c2b->FirstName=$FirstName;
+        $c2b->MiddleName=$MiddleName;
+        $c2b->LastName=$LastName;
+        $c2b->save();
+
+
+        return response()->json([
+            'ResultCode'=>0,
+            'ResultDesc'=>'Accepted'
+        ]);
 
     }
 }
