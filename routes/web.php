@@ -18,4 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/token', [PaymentController::class, 'token']);
+Route::get('/stk-push', [PaymentController::class, 'initiateStkPush']);
